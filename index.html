@@ -121,15 +121,17 @@
     background:transparent;
   }
   table.items select:focus, table.items input:focus{ background:#fffbe6; outline:1px solid var(--teal); }
-  .col-item{ width:19%; text-align:left; }
-  .col-year{ width:8%; }
-  .col-month{ width:10%; }
-  .col-notes{ width:17%; }
-  .col-qty{ width:7%; }
-  .col-currency{ width:11%; }
+  .col-item{ width:16%; text-align:left; }
+  .col-year{ width:7%; }
+  .col-month{ width:9%; }
+  .col-notes{ width:14%; }
+  .col-qty{ width:6%; }
+  .col-currency{ width:9%; }
+  .col-unitprice{ width:11%; }
   .col-amount{ width:12%; }
   td.num input{ text-align:right; }
   td.center select{ text-align:center; }
+  .amount-input{ text-align:right; font-weight:700; background:#f7fafc !important; color:#1a2744; }
 
   .subtotal-row{
     display:flex;
@@ -197,11 +199,30 @@
     margin-top:16px;
   }
 
+  @page{ size: A4; margin: 8mm; }
   @media print{
-    body{ background:#fff; padding:0; }
+    html, body{ background:#fff; padding:0; margin:0; }
     .toolbar{ display:none; }
-    .sheet{ box-shadow:none; max-width:100%; padding:18px 22px; }
+    .sheet{ box-shadow:none; max-width:100%; padding:0; }
     select, input{ border:none !important; }
+    .logo-row{ margin-bottom:10px; }
+    .logo-row img{ height:30px; }
+    .accent-bar{ margin-bottom:6px; }
+    .hr{ margin:8px 0; }
+    .billto-grid{ margin-top:4px; }
+    .billto-left .field-input, .field-input{ padding:4px 8px; }
+    .date-block{ margin-bottom:8px; }
+    .amount-due-box{ padding:10px 10px 9px; margin-top:8px; }
+    .amount-due-box .val{ font-size:21px; margin:4px 0 3px; }
+    table.items thead th{ padding:4px 4px; }
+    table.items select, table.items input{ padding:3px 3px; font-size:10px; }
+    .subtotal-row{ padding:5px 4px; }
+    .total-due-bar{ padding:7px 10px; }
+    .payment-header{ padding:5px 10px; }
+    table.payment td.lbl, table.payment td.val input{ padding:4px 10px; }
+    .notes-section{ margin-top:8px; }
+    .notes-text{ padding-top:5px; }
+    .footer-bar{ padding:6px; margin-top:8px; }
   }
 </style>
 </head>
@@ -270,7 +291,8 @@
         <th rowspan="2" class="col-item">ITERM</th>
         <th colspan="3">DESCRIPTION</th>
         <th rowspan="2" class="col-qty">QTY</th>
-        <th rowspan="2" class="col-currency">UNIT PRICE</th>
+        <th rowspan="2" class="col-currency">CURRENCY</th>
+        <th rowspan="2" class="col-unitprice">UNIT PRICE</th>
         <th rowspan="2" class="col-amount">AMOUNT</th>
       </tr>
       <tr>
@@ -334,9 +356,10 @@ function buildRows(){
       <td class="col-year center"><select data-row="${i}" class="year-select">${opts(YEARS, yearDefault)}</select></td>
       <td class="col-month center"><select data-row="${i}" class="month-select">${opts(MONTHS, monthDefault)}</select></td>
       <td class="col-notes"><input type="text" data-row="${i}" class="notes-input"></td>
-      <td class="col-qty num"><input type="number" step="any" data-row="${i}" class="qty-input"></td>
+      <td class="col-qty num"><input type="number" step="any" data-row="${i}" class="qty-input" value="1"></td>
       <td class="col-currency center"><select data-row="${i}" class="currency-select">${opts(CURRENCIES, curDefault)}</select></td>
-      <td class="col-amount num"><input type="number" step="any" data-row="${i}" class="amount-input"></td>
+      <td class="col-unitprice num"><input type="number" step="any" data-row="${i}" class="unitprice-input"></td>
+      <td class="col-amount num"><input type="number" step="any" data-row="${i}" class="amount-input" readonly tabindex="-1"></td>
     </tr>`;
   }
   body.innerHTML = html;
@@ -351,10 +374,21 @@ function fmtMoney(n){
 
 function recalc(){
   let total = 0;
-  document.querySelectorAll('.amount-input').forEach(inp=>{
-    const v = parseFloat(inp.value);
-    if(!isNaN(v)) total += v;
-  });
+  for(let i=1;i<=ROW_COUNT;i++){
+    const qtyInp = document.querySelector(`.qty-input[data-row="${i}"]`);
+    const priceInp = document.querySelector(`.unitprice-input[data-row="${i}"]`);
+    const amountInp = document.querySelector(`.amount-input[data-row="${i}"]`);
+    const qty = parseFloat(qtyInp && qtyInp.value);
+    const price = parseFloat(priceInp && priceInp.value);
+    let lineAmount = 0;
+    if(!isNaN(qty) && !isNaN(price)){
+      lineAmount = qty * price;
+      amountInp.value = lineAmount.toFixed(2);
+    } else {
+      amountInp.value = '';
+    }
+    total += lineAmount;
+  }
   const currencySelect = document.querySelector('.currency-select[data-row="1"]');
   const currency = (currencySelect && currencySelect.value) ? currencySelect.value : 'JPY';
 
